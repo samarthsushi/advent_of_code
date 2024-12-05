@@ -10,40 +10,26 @@ fn main() -> io::Result<()> {
         let line = line?;
         let parts = line.split_whitespace();
         
-        let partx = parts.map(|x| x.parse::<i32>().unwrap()).collect::<Vec<i32>>();
-        let increasing = partx[0] < partx[1];
+        let seq = parts.map(|x| x.parse::<i32>().unwrap()).collect::<Vec<i32>>();
+        let increasing = seq[0] < seq[1];
         let mut safe = true;
-        let mut dampener_limit = false;
+        let mut dampener_used = false;
 
-        for i in 0..partx.len() - 1 {
-            if increasing { 
-                if partx[i] > partx[i+1] {
-                    if !dampener_limit {
-                        dampener_limit = true;
-                        continue;
-                    }
+        for pair in seq.windows(2) {
+            let diff = (pair[0] - pair[1]).abs();
+            let condition_violated = if increasing {
+                pair[0] > pair[1]
+            } else {
+                pair[0] < pair[1]
+            };
+
+            if condition_violated || !(1..=3).contains(&diff) {
+                if dampener_used {
                     safe = false;
-                    break; 
-                } 
-            }
-            else { 
-                if partx[i] < partx[i+1] { 
-                    if !dampener_limit {
-                        dampener_limit = true;
-                        continue;
-                    }
-                    safe = false;
-                    break; 
-                } 
-            }
-            let diff = (partx[i] - partx[i+1]).abs();
-            if diff < 1 || diff > 3 {
-                if !dampener_limit {
-                    dampener_limit = true;
-                    continue;
+                    break;
+                } else {
+                    dampener_used = true;
                 }
-                safe = false;
-                break;
             }
         }
 
