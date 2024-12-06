@@ -23,6 +23,7 @@ fn find_xmas(grid: &[Vec<char>]) -> usize {
     let mut count = 0;
     let rows = grid.len();
     let cols = grid[0].len();
+    const XMAS: [char; 4] = ['X', 'M', 'A', 'S'];
 
     for i in 0..rows {
         for j in 0..cols {
@@ -38,7 +39,7 @@ fn find_xmas(grid: &[Vec<char>]) -> usize {
                         break;
                     }
 
-                    if grid[x as usize][y as usize] != "XMAS".chars().nth(k.try_into().unwrap()).unwrap() {
+                    if grid[x as usize][y as usize] != XMAS[k as usize] {
                         match_found = false;
                         break;
                     }
