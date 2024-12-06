@@ -1,5 +1,4 @@
 use std::fs;
-use std::collections::HashMap;
 
 fn string_to_grid(input: &str) -> Vec<Vec<char>> {
     input
@@ -10,42 +9,44 @@ fn string_to_grid(input: &str) -> Vec<Vec<char>> {
 
 fn find_xmas(grid: &[Vec<char>]) -> usize {
     let directions = [
-        (0, 1),   
-        (0, -1),  
-        (1, 0),
-        (-1, 0),  
-        (1, 1),
-        (-1, -1),
-        (1, -1),
-        (-1, 1),
+        ((-1, -1), (1, 1)), 
+        ((-1, 1), (1, -1)),
     ];
 
     let mut count = 0;
-    let rows = grid.len();
-    let cols = grid[0].len();
-    const XMAS: [char; 4] = ['X', 'M', 'A', 'S'];
+    let rows = grid.len() as isize;
+    let cols = grid[0].len() as isize;
 
     for i in 0..rows {
         for j in 0..cols {
-            for &(dx, dy) in &directions {
-                let mut match_found = true;
+            if grid[i as usize][j as usize] == 'A' {
+                let mut valid = true;
 
-                for k in 0..4 {
-                    let x = i as isize + k * dx;
-                    let y = j as isize + k * dy;
+                for &((dx1, dy1), (dx2, dy2)) in &directions {
+                    let mut has_m = false;
+                    let mut has_s = false;
 
-                    if x < 0 || x >= rows as isize || y < 0 || y >= cols as isize {
-                        match_found = false;
-                        break;
+                    for &(dx, dy) in &[(dx1, dy1), (dx2, dy2)] {
+                        let x = i + dx;
+                        let y = j + dy;
+
+                        if x >= 0 && x < rows && y >= 0 && y < cols {
+                            let c = grid[x as usize][y as usize];
+                            if c == 'M' {
+                                has_m = true;
+                            } else if c == 'S' {
+                                has_s = true;
+                            }
+                        }
                     }
 
-                    if grid[x as usize][y as usize] != XMAS[k as usize] {
-                        match_found = false;
+                    if !(has_m && has_s) {
+                        valid = false;
                         break;
                     }
                 }
 
-                if match_found {
+                if valid {
                     count += 1;
                 }
             }
