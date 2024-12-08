@@ -5,10 +5,9 @@ enum CellStatus {
     Free,
     Obstructed,
     Visited,
-    VisitedDir(Direction)
 }
 
-#[derive(Debug, PartialEq, Clone, Copy)]
+#[derive(Debug, PartialEq, Clone, Copy, Hash, Eq)]
 enum Direction {
     Up,
     Left,
@@ -16,7 +15,7 @@ enum Direction {
     Right
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct Guard {
     x: isize,
     y: isize,
@@ -106,49 +105,57 @@ impl Lab {
         let mut ox: isize = 0;
         let mut oy: isize = 0;
         let mut valid = 0;
-        while oy < 130 {
-            let mut grid_c = self.grid.clone();
+        while oy < 129 || ox < 129 {
             let mut guard = self.guard.clone();
-            if grid_c[ox as usize][oy as usize] == CellStatus::Obstructed {
-                continue;
-            }
-            grid_c[guard.x as usize][guard.y as usize] = CellStatus::VisitedDir(guard.facing);
-            if ox == guard.x && oy == guard.y {
-                if oy == 129 {
+            if self.grid[ox as usize][oy as usize] == CellStatus::Obstructed {
+                if ox == 129 {
                     ox=0;
                     oy+=1;
                 } else {
                     ox+=1;
                 }
-                println!("{oy},{ox} evaluated");
+                println!("{ox},{oy} evaluated(cell is already obstructed)");
                 continue;
             }
+            if ox == guard.x && oy == guard.y {
+                if ox == 129 {
+                    ox=0;
+                    oy+=1;
+                } else {
+                    ox+=1;
+                }
+                println!("{ox},{oy} evaluated(cell is guard's initial cell)");
+                continue;
+            }
+            
+            let mut visited_nodes = std::collections::HashSet::new();
+            visited_nodes.insert(guard.clone());
+
             loop {
                 let (nx, ny) = guard.move_peek();
                 if nx < 0 || nx > 129 || ny < 0 || ny > 129 {
                     break;
                 }
-                if grid_c[nx as usize][ny as usize] == CellStatus::Obstructed {
+                if self.grid[nx as usize][ny as usize] == CellStatus::Obstructed || (nx, ny) == (ox, oy) {
                     guard.rotate_right();
+                    visited_nodes.insert(guard.clone());
                     continue;
-                }
-
-                if grid_c[nx as usize][ny as usize] == CellStatus::VisitedDir(guard.facing) {
-                    valid+=1;
-                    break;
                 }
                 guard.x = nx;
                 guard.y = ny;
-                grid_c[nx as usize][ny as usize] = CellStatus::VisitedDir(guard.facing);
-                
+                if visited_nodes.contains(&guard) {
+                    valid += 1;
+                    break;
+                }
+                visited_nodes.insert(guard.clone());
             }
-            if oy == 129 {
+            if ox == 129 {
                 ox=0;
                 oy+=1;
             } else {
                 ox+=1;
             }
-            println!("{oy},{ox} evaluated");
+            println!("{ox},{oy} evaluated(evald)");
         }
         valid
     }
