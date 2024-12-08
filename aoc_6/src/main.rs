@@ -114,7 +114,6 @@ impl Lab {
                 } else {
                     ox+=1;
                 }
-                println!("{ox},{oy} evaluated(cell is already obstructed)");
                 continue;
             }
             if ox == guard.x && oy == guard.y {
@@ -124,7 +123,6 @@ impl Lab {
                 } else {
                     ox+=1;
                 }
-                println!("{ox},{oy} evaluated(cell is guard's initial cell)");
                 continue;
             }
             
@@ -155,7 +153,6 @@ impl Lab {
             } else {
                 ox+=1;
             }
-            println!("{ox},{oy} evaluated(evald)");
         }
         valid
     }

@@ -7,9 +7,7 @@ fn main() {
     for l in s.lines() {
         let (target, n) = l.split_once(':').expect("DNEncounter :");
         let nums: Vec<usize> = n.split_whitespace().map(|x| x.parse::<usize>().unwrap()).collect();
-        // println!("{target}\n{:?}\n\n", nums);
         if calc_calibration(&nums, target.parse::<usize>().unwrap(), 1, nums[0]) {
-            print!("+ {target} ");
             total+=target.parse::<usize>().unwrap();
         }
     }
