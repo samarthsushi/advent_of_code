@@ -21,6 +21,7 @@ fn calc_calibration(nums: &[usize], target: usize, i: usize, intermediate: usize
 
     let add_r = calc_calibration(nums, target, i+1, intermediate+nums[i]);
     let mult_r = calc_calibration(nums, target, i+1, intermediate*nums[i]);
+    let concat_r = calc_calibration(nums, target, i+1, format!("{}{}", intermediate, nums[i]).parse::<usize>().unwrap());
 
-    add_r || mult_r
+    add_r || mult_r || concat_r
 }
