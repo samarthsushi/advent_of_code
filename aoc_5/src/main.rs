@@ -2,59 +2,104 @@ use std::fs::{self, File};
 use std::io::{self, BufRead, Read};
 use std::collections::HashMap;
 
-fn main() {
-    let file_path = "data/data.txt";
-    let file = File::open(file_path).unwrap();
-    let mut reader = io::BufReader::new(file);
-    let mut s1 = String::new();
-    let mut s2 = String::new();
+struct Manual<'a> {
+    rules: Vec<(&'a str, &'a str)>,
+    pages: Vec<Vec<&'a str>>
+}
 
-    for line in reader.by_ref().lines() {
-        let line = line.unwrap();
-        if line.trim().is_empty() {
-            break;
-        }
-        s1.push_str(&line);
-        s1.push('\n');
+impl<'a> Manual<'a> {
+    pub fn new(input: &'a str) -> Self {
+        let (a,b) = input.split_once("\r\n\r\n").expect("DNE blank line");
+        let rules: Vec<(&'a str, &'a str)>= a.lines().map(|l| l.split_once('|').expect("DNE |")).collect();
+        let pages: Vec<Vec<&'a str>> = b.lines().map(|r| r.split(',').collect()).collect();
+        Self { rules, pages }
     }
-    reader.read_to_string(&mut s2).unwrap();
-    let mut map: HashMap<String, Vec<String>> = HashMap::new();
-    for line in s1.lines() {
-        let parts: Vec<&str> = line.split('|').collect();
-        let a: String = parts[0].to_string();
-        let b: String = parts[1].to_string();
 
-        map.entry(a).or_insert_with(Vec::new).push(b);
-    }
-    let mut sum = 0;
-    for line in s2.lines() {
-        let mut is_valid = true;
-        let pages: Vec<String> = line
-            .split(',')
-            .map(|s| s.to_string())
-            .collect();
-        for i in 0..pages.len()-1 {
-            for j in i + 1..pages.len() {
-                if let Some(values) = map.get(&pages[i]) {
-                    if !values.contains(&pages[j]) {
-                        is_valid = false;
-                        break;
+    pub fn get_failed(&self) -> Vec<bool> {
+        let n = self.pages.len();
+        let mut failed = vec![false; n];
+
+        for (f,s) in self.rules.iter() {
+            for p in 0..n {
+                if failed[p] {
+                    continue;
+                }
+
+                if let Some(si) = self.pages[p].iter().position(|x| x == s) {
+                    if self.pages[p][si..].contains(f) {
+                        failed[p] = true;
                     }
-                } else {
-                    is_valid = false;
-                    break;
                 }
             }
-            if !is_valid {
+        }
+        failed
+    }
+}
+
+fn partone(m: &Manual) -> usize {
+    let f = m.get_failed();
+
+    m.pages.iter().enumerate().filter_map(|pt| {
+        if f[pt.0] {
+            return None;
+        }
+        let middle = pt.1[pt.1.len() / 2];
+        Some(middle.parse::<usize>().expect("NaN"))
+    }).sum()
+}
+
+fn parttwo(m: &Manual) -> usize {
+    let f = m.get_failed();
+
+    let mut failed_pages: Vec<_> = m.pages.iter().enumerate().filter_map(|p| {
+        if f[p.0] {
+            return Some(p.1.clone());
+        }
+        None
+    }).collect();
+
+    let mut sum = 0;
+
+    for mut page in failed_pages {
+        loop {
+            let mut swapped = false;
+
+            'outer: for &(first,second) in m.rules.iter() {
+                for i in 0..page.len() {
+                    if page[i] == first {
+                        continue 'outer;
+                    }
+                    if page[i] == second {
+                        for j in i..page.len() {
+                            if page[j] == first {
+                                page.swap(i, j);
+                                swapped = true;
+                                continue 'outer;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if !swapped {
+                sum += page[page.len() / 2].parse::<usize>().expect("it to be a number");
                 break;
             }
-        }  
-        if !is_valid {
-            continue;
         }
-        let middle_index = pages.len()/2;
-        let middle = pages[middle_index].parse::<u32>().unwrap();
-        sum+=middle;
     }
-    println!("{}", sum);
+    sum
+}
+
+fn main() {
+    let file_path = "data/data.txt";
+    let s = fs::read_to_string(file_path).unwrap();
+
+    let m = Manual::new(&s);
+    let p1 = partone(&m);
+
+    println!("{p1}");
+
+    let p2 = parttwo(&m);
+
+    println!("{p2}");
 }
