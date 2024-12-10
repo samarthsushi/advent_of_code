@@ -15,12 +15,14 @@ impl DiskMap {
         let mut disk = Vec::new();
         for c in input.chars() {
             if is_free_block {
-                disk.extend(std::iter::repeat(BlockT::Free).take(c.to_digit(10).unwrap().try_into().unwrap()));
+                let size = c.to_digit(10).unwrap().try_into().unwrap();
+                disk.extend(std::iter::repeat(BlockT::Free).take(size));
                 is_free_block = false;
             } else {
-                disk.extend(std::iter::repeat(BlockT::File(fileid)).take(c.to_digit(10).unwrap().try_into().unwrap()));
-                is_free_block = true;
+                let size = c.to_digit(10).unwrap().try_into().unwrap();
+                disk.extend(std::iter::repeat(BlockT::File(fileid)).take(size));
                 fileid+=1;
+                is_free_block = true;
             }
         }
         Self { disk }
@@ -58,6 +60,51 @@ impl DiskMap {
     }
 
     pub fn parttwo(&mut self) -> u64 {
+        let mut free_spaces = Vec::new();
+        let mut file_spaces = Vec::new();
+        let mut iter = self.disk.iter().enumerate().peekable();
+
+        while let Some((start, block)) = iter.next() {
+            match block {
+                BlockT::Free => {
+                    let mut size = 1;
+                    while let Some((_, next_block)) = iter.peek() {
+                        if matches!(next_block, BlockT::Free) {
+                            size += 1;
+                            iter.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    free_spaces.push((start, size));
+                }
+                BlockT::File(file_id) => {
+                    let mut size = 1;
+                    while let Some((_, next_block)) = iter.peek() {
+                        if let BlockT::File(next_id) = next_block {
+                            if next_id == file_id {
+                                size += 1;
+                                iter.next();
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        }
+                    }
+                    file_spaces.push((start, size));
+                }
+            }
+        }
+        for (start, size) in file_spaces.iter().rev() {
+            if let Some((free_start, free_size)) = free_spaces.iter_mut().find(|(_, free_size)| *free_size >= *size) {
+                for offset in 0..*size {
+                    self.disk.swap(*free_start + offset, *start + offset);
+                }
+                *free_start += *size;
+                *free_size -= *size;
+            }
+        }
         self.checksum()
     }
 }
@@ -67,7 +114,6 @@ fn main() {
     let s = std::fs::read_to_string(file_path).unwrap();
 
     let mut diskmap = DiskMap::new(s);
-    // let p1 = diskmap.partone();
     let p2 = diskmap.parttwo();
-    println!("{}", p2);
+    println!("{p2}")
 }
