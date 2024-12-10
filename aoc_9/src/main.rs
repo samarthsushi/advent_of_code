@@ -97,7 +97,10 @@ impl DiskMap {
             }
         }
         for (start, size) in file_spaces.iter().rev() {
-            if let Some((free_start, free_size)) = free_spaces.iter_mut().find(|(_, free_size)| *free_size >= *size) {
+            if let Some((free_start, free_size)) = free_spaces
+                .iter_mut()
+                .find(|(free_start, free_size)| *free_size >= *size && *free_start < *start)
+            {
                 for offset in 0..*size {
                     self.disk.swap(*free_start + offset, *start + offset);
                 }
