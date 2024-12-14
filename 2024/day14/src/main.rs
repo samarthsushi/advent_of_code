@@ -1,4 +1,6 @@
 use std::cmp::Ordering::{Less, Greater, Equal};
+use std::io::Write;
+use image::{ImageBuffer, Rgb};
 
 const GRIDLENGTH: isize = 101;
 const GRIDHEIGHT: isize = 103;
@@ -45,11 +47,26 @@ impl Floor {
         }
         counts.iter().product()
     }
+
+    pub fn parttwo(&mut self) {
+        for i in 0..10000 {
+            let mut img = ImageBuffer::new(GRIDLENGTH as u32, GRIDHEIGHT as u32);
+            for pixel in img.pixels_mut() {
+                *pixel = Rgb([0u8, 0u8, 0u8]);
+            }
+            for guard in &mut self.guards {
+                guard.px = ((guard.px + guard.vx) % GRIDLENGTH + GRIDLENGTH) % GRIDLENGTH;
+                guard.py = ((guard.py + guard.vy) % GRIDHEIGHT + GRIDHEIGHT) % GRIDHEIGHT;
+                img.put_pixel(guard.px as u32, guard.py as u32, Rgb([255u8, 255u8, 255u8]));
+            }
+            let filename = format!("data/{}.png", i);
+            img.save(&filename).unwrap();
+        }
+    }
 }
 fn main() {
     let file_path = "data/data.txt";
     let s = std::fs::read_to_string(file_path).unwrap();
     let mut floor = Floor::new(s);
-    let p1 = floor.partone();
-    println!("{p1}");
+    let p2 = floor.parttwo();
 }
