@@ -1,6 +1,6 @@
 const WRHSD: usize = 7;
 
-#[derive(Copy,Clone,Debug)]
+#[derive(Copy,Clone,Debug,PartialEq)]
 enum MoveT {
     Up,
     Down,
@@ -220,100 +220,52 @@ impl Warehouse2 {
     }
 
     fn eval(&mut self, move_: MoveT) {
-        let (dr, dc) = match move_ {
-            MoveT::Up => (-1, 0),
-            MoveT::Down => (1, 0),
-            MoveT::Left => (0, -1),
-            MoveT::Right => (0, 1),
-        };
-        let (mut new_row, mut new_col) = (
-            (self.robot_loc.0 as isize + dr) as usize,
-            (self.robot_loc.1 as isize + dc) as usize,
-        );
-        if self.is_in_bounds(new_row as isize, new_col as isize) {
-            match self.grid[new_row][new_col] {
-                CellStatus::Empty => {
-                    self.robot_loc = (new_row, new_col);
-                }
-                CellStatus::Wall => {
-                    return;
-                }
-                CellStatus::BoxL | CellStatus::BoxR => {
-                    let affected_boxes_ = self.find_affected_boxes(new_row, new_col, dr, dc);
-                    let mut set = std::collections::HashSet::new();
-                    let affected_boxes = affected_boxes_.into_iter()
-                        .filter(|item| set.insert(item.clone()))
-                        .collect::<Vec<(usize,usize)>>();
-                    println!("a_b:{:?}", affected_boxes);
-                    let mut updates = vec![];
-                    for (row, col) in affected_boxes.iter().rev() {
-                        // Calculate new positions for BoxL and BoxR
-                        let new_row = (row.to_owned() as isize + dr) as usize;
-                        let new_col = (col.to_owned() as isize + dc) as usize;
-    
-                        updates.push((CellStatus::BoxL, (*row, *col), (new_row, new_col)));
-                        updates.push((
-                            CellStatus::BoxR,
-                            (*row, col + 1),      // BoxR is always to the right of BoxL
-                            (new_row, new_col + 1), // Move BoxR accordingly
-                        ));
+        match move_ {
+            MoveT::Left | MoveT::Right => {
+                let dc: isize = if move_ == MoveT::Left { -1 } else { 1 };
+                let (robot_row, robot_col) = self.robot_loc;
+                let mut current_col: isize = robot_col as isize + dc;
+                let mut chain_start = robot_col;
+                let mut chain_end = robot_col;
+                let mut can_move = false;
+
+                while current_col > 0 {
+                    println!("{:?}", self.grid[robot_row][current_col as usize]);
+                    match self.grid[robot_row][current_col as usize] {
+                        CellStatus::BoxR => {
+                            current_col += dc;
+                        }
+                        CellStatus::BoxL => {
+                            current_col += dc;
+                        }
+                        CellStatus::Empty => {
+                            chain_end = (current_col-dc) as usize;
+                            can_move = true;
+                            break;
+                        }
+                        _ => return,
                     }
-
-                    println!("{:?}", updates);
-                
-                    // Apply all updates
-                    for (cell_type, (old_row, old_col), (new_row, new_col)) in updates {
-                        self.grid[new_row][new_col] = cell_type; // Move the cell
-                        self.grid[old_row][old_col] = CellStatus::Empty; // Clear the old position
-                    }
-                
-
-                    self.robot_loc = (
-                        (self.robot_loc.0 as isize + dr) as usize,
-                        (self.robot_loc.1 as isize + dc) as usize,
-                    );
                 }
-                _ => unreachable!()
+                if can_move {
+                    for col in chain_end..=chain_start {
+                        if self.grid[robot_row][col] == CellStatus::BoxL {
+                            self.grid[robot_row][(col as isize + dc) as usize] = CellStatus::BoxL;
+                            self.grid[robot_row][col] = CellStatus::Empty;
+                        } else if self.grid[robot_row][col] == CellStatus::BoxR {
+                            self.grid[robot_row][(col as isize + dc) as usize] = CellStatus::BoxR;
+                            self.grid[robot_row][col] = CellStatus::Empty;
+                        }
+                    }
+                    self.robot_loc = (robot_row, (robot_col as isize + dc) as usize);
+                }
             }
-        }
-
-    }
-
-    fn find_affected_boxes(
-        &self,
-        start_row: usize,
-        start_col: usize,
-        row_delta: isize,
-        col_delta: isize,
-    ) -> Vec<(usize, usize)> {
-        let mut affected_boxes = Vec::new();
-        let mut queue = std::collections::VecDeque::new();
-
-        queue.push_back((start_row, start_col));
-        println!("q:{:?}",queue);
-
-        while let Some((current_row, current_col)) = queue.pop_front() {
-            let box_left_col = if self.grid[current_row][current_col] == CellStatus::BoxR {
-                current_col - 1
-            } else {
-                current_col
-            };
-
-            affected_boxes.push((current_row, box_left_col));
-
-            let next_row = (current_row as isize + row_delta) as usize;
-            let next_col = (current_col as isize + col_delta) as usize;
-
-            if self.is_in_bounds(next_row as isize, next_col as isize)
-                && (self.grid[next_row][next_col] == CellStatus::BoxL
-                    || self.grid[next_row][next_col] == CellStatus::BoxR)
-            {
-                queue.push_back((next_row, next_col));
-                println!("q:{:?}", queue);
+            MoveT::Up => {
+                todo!();
             }
-        }
-
-        affected_boxes
+            MoveT::Down => {
+                todo!();
+            }
+        }    
     }
 
     pub fn exec(&mut self) -> usize {
