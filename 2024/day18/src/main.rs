@@ -68,10 +68,15 @@ fn main() {
     let path = "data/data.txt";
     let s = std::fs::read_to_string(path).unwrap();
     let mut grid = [[0; 71]; 71];
-    for line in s.as_str().lines().take(1024) {
-        let (x,y) = line.split_once(',').unwrap();
+    let pts = s.as_str().lines().map(|l| {
+        let (x,y) = l.split_once(',').unwrap();
         let x: usize = x.trim().parse().unwrap();
         let y: usize = y.trim().parse().unwrap();
+        (x,y)
+    }).collect::<Vec<(usize, usize)>>();
+
+    for i in 0..1024 {
+        let (x,y) = pts[i];
         grid[y][x] = 1;
     }
 
@@ -81,5 +86,15 @@ fn main() {
         println!("no path");
     }
     
-
+    let mut p2=(0,0);
+    for i in 1024..pts.len() {
+        let (x,y) = pts[i];
+        grid[y][x] = 1;
+        if let None = dijkstra(&grid) {
+            p2 = (x,y);
+            break;
+        }
+    }
+    
+    println!("{:?}", p2);
 }
