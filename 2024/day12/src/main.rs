@@ -1,104 +1,73 @@
-use std::collections::HashSet;
-
-const DIRECTIONS: [(isize, isize); 4] = [
-    (-1, 0),
-    (1, 0),
-    (0, -1),
-    (0, 1),
-];
-
-type Grid = Vec<Vec<char>>;
-type Regions = Vec<Vec<(usize,usize)>>;
-
-fn flood_fill(grid: &Grid, x: usize, y: usize, marker: usize, visited: &mut HashSet<(usize, usize)>, regions: &mut Regions) {
-    let rows = grid.len();
-    let cols = grid[0].len();
-    let original = grid[x][y];
-
-    let mut stack = vec![(x, y)];
-    while let Some((cx, cy)) = stack.pop() {
-        if visited.contains(&(cx, cy)) {
-            continue;
-        }
-        visited.insert((cx, cy));
-        regions[marker].push((cx,cy));
-
-        for (dx, dy) in &DIRECTIONS {
-            let nx = cx as isize + dx;
-            let ny = cy as isize + dy;
-
-            if nx >= 0 && ny >= 0 && nx < rows as isize && ny < cols as isize {
-                let nx = nx as usize;
-                let ny = ny as usize;
-
-                if grid[nx][ny] == original && !visited.contains(&(nx, ny)) {
-                    stack.push((nx, ny));
-                }
-            }
-        }
-    }
-}
-
-fn find_regions(grid: &Grid) -> Regions {
-    let mut visited = HashSet::new();
-    let mut regions = Vec::new();
-
-    for x in 0..grid.len() {
-        for y in 0..grid[0].len() {
-            if !visited.contains(&(x, y)) {
-                regions.push(Vec::new());
-                let marker = regions.len()-1;
-                flood_fill(grid, x, y, marker, &mut visited, &mut regions);
-            }
-        }
-    }
-    regions
-}
-
-fn calc_perimeter(region: &Vec<(usize, usize)>, grid: &Grid) -> usize {
-    let mut perimeter = 0;
-    let rows = grid.len();
-    let cols = grid[0].len();
-
-    for &(x, y) in region {
-        for (dx, dy) in &DIRECTIONS {
-            let nx = x as isize + dx;
-            let ny = y as isize + dy;
-
-            if nx < 0 || ny < 0 || nx >= rows as isize || ny >= cols as isize {
-                perimeter += 1;
-            } else {
-                let nx = nx as usize;
-                let ny = ny as usize;
-                if grid[nx][ny] != grid[x][y] {
-                    perimeter += 1;
-                }
-            }
-        }
-    }
-
-    perimeter
-}
+use std::collections::{HashMap, HashSet, BTreeSet};
 
 fn main() {
-    let path = "data/data.txt";
-    let s = std::fs::read_to_string(path).unwrap();
-    let mut grid = Vec::new();
-    for line in s.as_str().lines() {
-        let line = line.trim();
-        let mut row = Vec::new();
-        for c in line.chars() {
-            row.push(c);
+    let input = std::fs::read_to_string("data/data.txt").expect("Failed to read file");
+    let mut grid: HashMap<(i32, i32), char> = HashMap::new();
+
+    for (i, line) in input.lines().enumerate() {
+        for (j, c) in line.chars().enumerate() {
+            grid.insert((i as i32, j as i32), c);
         }
-        grid.push(row);
     }
 
-    let regions = find_regions(&grid);
-    let mut p1 = 0;
-    for region in regions.iter() {
-        let perimeter = calc_perimeter(region, &grid);
-        let area = region.len();
-        p1+=area*perimeter;
+    let mut sets: HashMap<(i32, i32), HashSet<(i32, i32)>> = grid
+        .keys()
+        .map(|&p| (p, HashSet::from([p])))
+        .collect();
+
+    for (&p, &c) in &grid {
+        let neighbors = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+        for &(dx, dy) in &neighbors {
+            let neighbor = (p.0 + dx, p.1 + dy);
+            if let Some(&neighbor_char) = grid.get(&neighbor) {
+                if c == neighbor_char {
+                    let union = sets[&p].union(&sets[&neighbor]).cloned().collect::<HashSet<_>>();
+                    for &point in &union {
+                        sets.insert(point, union.clone());
+                    }
+                }
+            }
+        }
     }
-    println!("{p1}");
+
+    let mut unique_sets: BTreeSet<BTreeSet<(i32, i32)>> = BTreeSet::new();
+    for set in sets.values() {
+        unique_sets.insert(set.iter().cloned().collect());
+    }
+
+    let edge = |ps: &BTreeSet<(i32, i32)>| -> (HashSet<((i32, i32), (i32, i32))>, HashSet<((i32, i32), (i32, i32))>) {
+        let directions = [(0, 1), (0, -1), (1, 0), (-1, 0)];
+        let mut edges = HashSet::new();
+
+        for &p in ps {
+            for &(dx, dy) in &directions {
+                let neighbor = (p.0 + dx, p.1 + dy);
+                if !ps.contains(&neighbor) {
+                    edges.insert((p, (dx, dy)));
+                }
+            }
+        }
+
+        let adjusted_edges: HashSet<_> = edges
+            .iter()
+            .filter(|&&((x, y), (dx, dy))| {
+                !edges.contains(&((x + dy, y - dx), (dx, dy)))
+            })
+            .cloned()
+            .collect();
+
+        (edges, adjusted_edges)
+    };
+
+    for part in 0..=1 {
+        let total: usize = unique_sets
+            .iter()
+            .map(|s| {
+                let component_size = s.len();
+                component_size * if part == 0 { edge(s).0.len() } else { edge(s).1.len() }
+            })
+            .sum();
+
+        println!("{}", total);
+    }
 }
